@@ -8,6 +8,6 @@ Les stacks présentent dans le docker-compose sont celles qui sont en vert sur l
 Si vous rencontrez des problèmes vous pouvez tenter de faire un chmod 777 sur le data-store.
 
 ```
-docker-compose up -d
+docker compose up -d
 ```
 
