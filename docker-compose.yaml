@@ -1,0 +1,83 @@
+version: '3'
+services:
+  crawler:
+    image: wilmaxys/archiweb-crawler:latest
+    depends_on:
+      - elastic_consumer
+      - nats
+      - proxy
+    volumes:
+      - ./data_store:/usr/share/data
+    networks:
+      - gogole
+  elastic_consumer:
+    image: wilmaxys/archiweb-elastic-consumer:latest
+    depends_on:
+      elastic:
+        condition: service_healthy
+    networks:
+      - gogole
+  api:
+    image: wilmaxys/archiweb-api:latest
+    depends_on:
+      - elastic_facade
+    networks:
+      - gogole
+  elastic_facade:
+    image: wilmaxys/archiweb-elastic-facade:latest
+    container_name: 'elastic-facade'
+    environment:
+      - ELASTICSEARCH_USER=elastic
+      - ELASTICSEARCH_PASSWORD=password
+    depends_on:
+      elastic:
+        condition: service_healthy
+    networks:
+      - gogole
+  server:
+    image: wilmaxys/archiweb-server:latest
+    depends_on:
+      - api
+    ports:
+      - '80:80'
+    volumes:
+      - ./data_store:/usr/share/data
+    networks:
+      - gogole
+  elastic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.12.0
+    container_name: es01
+    depends_on:
+      - nats
+    environment:
+      - node.name=es01
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elastic:/usr/share/elasticsearch/data
+    networks:
+      - gogole
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'curl --silent --fail elastic:9200/_cluster/health?wait_for_status=green&timeout=1s || exit 1',
+        ]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+  nats:
+    image: nats:latest
+    networks:
+      - gogole
+
+volumes:
+  elastic:
+
+networks:
+  gogole:
